@@ -8,20 +8,23 @@ metadata:
 spec:
   project: default
   source:
-    # O repositório no GitHub que o ArgoCD deve vigiar
     repoURL: https://github.com/lcvinicius/cloud-native-url-shortener.git
     targetRevision: HEAD
     path: k8s
   destination:
-    # O cluster local onde ele deve fazer o deploy
     server: https://kubernetes.default.svc
     namespace: urlshortener
+  # Padrão Enterprise: Manda o ArgoCD ignorar alterações no campo replicas
+  # permitindo que o HPA (Horizontal Pod Autoscaler) escale pods livremente sem dar OutOfSync
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: urlshortener-api
+      jsonPointers:
+        - /spec/replicas
   syncPolicy:
     automated:
-      # Prune: Se você remover um manifesto do Git, o ArgoCD deleta o recurso do cluster
       prune: true
-      # SelfHeal: Se alguém alterar o cluster na mão via kubectl, o ArgoCD desfaz e restaura o Git
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-
