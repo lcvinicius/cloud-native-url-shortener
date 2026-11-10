@@ -1,0 +1,108 @@
+name: DevSecOps Pipeline (CI)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Permissões necessárias para publicar a imagem no GitHub Container Registry (GHCR)
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ========================================================
+  # JOB 1: Análise Estática de Segurança e Boas Práticas (Linters)
+  # ========================================================
+  security-audit:
+    name: Security & Docker Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necessário para o Gitleaks analisar todo o histórico de commits
+
+      # 1. Gitleaks: Impede que senhas, chaves privadas ou tokens vazem no repositório
+      - name: Rodar Gitleaks (Detecção de Segredos)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Hadolint: Garante que o Dockerfile segue as melhores práticas da indústria
+      - name: Rodar Hadolint (Auditoria do Dockerfile)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: error
+
+  # ========================================================
+  # JOB 2: Build da Imagem, Scan de Vulnerabilidades (CVEs) e Push no GHCR
+  # ========================================================
+  build-and-publish:
+    name: Build, Trivy Scan & Publish to GHCR
+    needs: security-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Autentica automaticamente no GHCR usando o token gerado pelo próprio GitHub Actions
+      - name: Login no GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Gera tags semânticas para a imagem (ex: latest e a SHA do commit)
+      - name: Extrair Metadados do Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # Faz o build da imagem e carrega localmente para o scanner inspecionar
+      - name: Build da Imagem Docker para Inspeção
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 3. Trivy: Escaneia a imagem à procura de vulnerabilidades no Linux e nos pacotes Java
+      - name: Rodar Trivy (Scanner de Vulnerabilidades na Imagem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-scan
+          format: 'table'
+          exit-code: '0' # Exibe a tabela de auditoria completa nos logs
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      # 4. Publicação Oficial: Envia a imagem auditada e aprovada para o GHCR
+      - name: Publicar Imagem Final no GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
