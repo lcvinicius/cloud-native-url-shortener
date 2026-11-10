@@ -22,7 +22,7 @@ metadata:
   labels:
     app: urlshortener-api
 spec:
-  replicas: 2 # Alta Disponibilidade: 2 pods rodando em paralelo
+  replicas: 3 # Alta Disponibilidade: 2 pods rodando em paralelo
   selector:
     matchLabels:
       app: urlshortener-api
