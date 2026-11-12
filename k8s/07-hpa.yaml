@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: urlshortener-api
   minReplicas: 2
-  maxReplicas: 5
+  maxReplicas: 3 # Ajustado para o limite de capacidade do ambiente local (2 vCPUs)
   metrics:
     - type: Resource
       resource:
