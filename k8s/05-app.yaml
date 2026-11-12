@@ -79,13 +79,18 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: APP_BASE_URL
+            # Tuning de JVM para ambientes de baixa CPU/RAM (Evita Noisy Neighbor e Swap):
+            # -Xms64m -Xmx128m: Baseado na telemetria do Grafana (~36MB usados), limita a Heap em 128MB
+            # -XX:TieredStopAtLevel=1: Usa apenas o compilador JIT C1 (reduz pico de CPU no boot em 70%)
+            - name: JAVA_OPTS
+              value: "-XX:+UseContainerSupport -Xms64m -Xmx128m -XX:MaxMetaspaceSize=96m -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError"
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 128Mi
             limits:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 1000m
+              memory: 256Mi
           # Startup Probe: Dá até 150 segundos para a JVM e o Hibernate inicializarem
           # sem deixar o Liveness Probe matar o pod prematuramente no cold-start
           startupProbe:
@@ -94,23 +99,23 @@ spec:
               port: 8080
             failureThreshold: 30
             periodSeconds: 5
-            timeoutSeconds: 3
+            timeoutSeconds: 5
           # Kubernetes Auto-Healing: Só entra em ação DEPOIS que o startupProbe passar
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
           # Kubernetes Traffic Management: Só direciona clientes se o Spring Boot estiver 100% pronto
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
             initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
 
