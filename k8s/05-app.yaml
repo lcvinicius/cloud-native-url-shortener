@@ -86,12 +86,21 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-          # Kubernetes Auto-Healing: Reinicia o Pod se a aplicação travar
+          # Startup Probe: Dá até 150 segundos para a JVM e o Hibernate inicializarem
+          # sem deixar o Liveness Probe matar o pod prematuramente no cold-start
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+          # Kubernetes Auto-Healing: Só entra em ação DEPOIS que o startupProbe passar
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 35
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
@@ -100,7 +109,7 @@ spec:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 25
+            initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
