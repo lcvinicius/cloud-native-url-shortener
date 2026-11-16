@@ -1,4 +1,4 @@
-# 🚀 Cloud-Native URL Shortener — DevSecOps, GitOps & SRE Reference Architecture
+# Cloud-Native URL Shortener — DevSecOps, GitOps & SRE Reference Architecture
 
 [![DevSecOps CI Pipeline](https://github.com/lcvinicius/cloud-native-url-shortener/actions/workflows/ci-devsecops.yml/badge.svg)](https://github.com/lcvinicius/cloud-native-url-shortener/actions/workflows/ci-devsecops.yml)
 ![Java 21](https://img.shields.io/badge/Java-21%20LTS-ED8B00?logo=openjdk&logoColor=white)
@@ -12,40 +12,40 @@ Projeto de Engenharia **DevOps & Site Reliability Engineering (SRE)** de ponta a
 
 ---
 
-## 🏗️ 1. Arquitetura do Sistema (Cloud-Native & Cache-Aside)
+## 1. Arquitetura do Sistema (Cloud-Native & Cache-Aside)
 
 A aplicação implementa o padrão **Cache-Aside** para garantir latências sub-milissegundo (`< 1ms`) nos redirecionamentos de leitura, protegendo o banco relacional contra gargalos de I/O:
 
 ```mermaid
 flowchart LR
-    Client(["🌐 Usuários / k6 Load Test"]) -->|"HTTP :8080"| Ingress["🔀 Traefik Ingress Controller"]
-    Ingress --> Service["⚖️ K8s Service (ClusterIP)"]
+    Client(["Usuários / k6 Load Test"]) -->|"HTTP :8080"| Ingress["Traefik Ingress Controller"]
+    Ingress --> Service["K8s Service (ClusterIP)"]
 
-    subgraph K8s["☸️ Cluster Kubernetes (Namespace: urlshortener)"]
-        Service --> Pod1["🍃 API Pod 1 (Java 21)"]
-        Service --> Pod2["🍃 API Pod 2 (Java 21)"]
-        Service -.->|"Scale-Out (>70% CPU)"| Pod3["🍃 API Pod 3 (HPA)"]
+    subgraph K8s["Cluster Kubernetes (Namespace: urlshortener)"]
+        Service --> Pod1["API Pod 1 (Java 21)"]
+        Service --> Pod2["API Pod 2 (Java 21)"]
+        Service -.->|"Scale-Out (>70% CPU)"| Pod3["API Pod 3 (HPA)"]
 
-        Pod1 & Pod2 & Pod3 -->|"1. Cache Lookup (<1ms)"| Redis[("⚡ Redis 7\n(In-Memory Cache)")]
-        Pod1 & Pod2 & Pod3 -->|"2. Cache Miss / Write"| Postgres[("🐘 PostgreSQL 16\n(StatefulSet + PVC)")]
-        HPA["📈 Horizontal Pod Autoscaler\n(min: 2 | max: 3)"] -.->|"Monitora CPU"| Pod1 & Pod2 & Pod3
+        Pod1 & Pod2 & Pod3 -->|"1. Cache Lookup (<1ms)"| Redis[("Redis 7\n(In-Memory Cache)")]
+        Pod1 & Pod2 & Pod3 -->|"2. Cache Miss / Write"| Postgres[("PostgreSQL 16\n(StatefulSet + PVC)")]
+        HPA["Horizontal Pod Autoscaler\n(min: 2 | max: 3)"] -.->|"Monitora CPU"| Pod1 & Pod2 & Pod3
     end
 
-    subgraph Obs["📊 Namespace: monitoring"]
-        Prometheus["🔥 Prometheus\n(Scrape /actuator/prometheus 5s)"] -->|"Coleta Métricas"| Service
-        Grafana["📈 Grafana Dashboards"] -->|"PromQL"| Prometheus
+    subgraph Obs["Namespace: monitoring"]
+        Prometheus["Prometheus\n(Scrape /actuator/prometheus 5s)"] -->|"Coleta Métricas"| Service
+        Grafana["Grafana Dashboards"] -->|"PromQL"| Prometheus
     end
 
-    subgraph GitOps["🔄 Namespace: argocd"]
-        ArgoCD["🐙 ArgoCD Controller"] -->|"Auto-Sync & Self-Heal"| K8s
+    subgraph GitOps["Namespace: argocd"]
+        ArgoCD["ArgoCD Controller"] -->|"Auto-Sync & Self-Heal"| K8s
     end
 
-    GitHub[("📦 GitHub Repository\n(Single Source of Truth)")] -->|"Webhook / Polling"| ArgoCD
+    GitHub[("GitHub Repository\n(Single Source of Truth)")] -->|"Webhook / Polling"| ArgoCD
 ```
 
 ---
 
-## 🛡️ 2. Pipeline CI/CD DevSecOps (Shift-Left Security)
+## 2. Pipeline CI/CD DevSecOps (Shift-Left Security)
 
 Toda alteração enviada para a branch `main` passa por uma esteira automatizada no **GitHub Actions** ([`.github/workflows/ci-devsecops.yml`](.github/workflows/ci-devsecops.yml)) composta por múltiplos *Security Gates*:
 
@@ -59,7 +59,7 @@ Toda alteração enviada para a branch `main` passa por uma esteira automatizada
 
 ---
 
-## ☸️ 3. Engenharia Kubernetes & GitOps (ArgoCD)
+## 3. Engenharia Kubernetes & GitOps (ArgoCD)
 
 A infraestrutura no diretório [`k8s/`](k8s/) e [`argocd/`](argocd/) foi desenhada para resiliência em produção:
 
@@ -80,7 +80,7 @@ A infraestrutura no diretório [`k8s/`](k8s/) e [`argocd/`](argocd/) foi desenha
 
 ---
 
-## 🔬 4. Estudo de Caso SRE: Right-Sizing de JVM & Observabilidade
+## 4. Estudo de Caso SRE: Right-Sizing de JVM & Observabilidade
 
 Durante a operação em ambiente restrito (cluster local `k3d` em WSL2 limitado a **2 vCPUs e 3 GB de RAM**), a telemetria do **Prometheus + Grafana** foi fundamental para diagnosticar e resolver dois problemas clássicos de produção:
 
@@ -108,7 +108,7 @@ O gráfico abaixo mostra o comportamento da Heap no Grafana durante o teste de e
 
 ---
 
-## ⚡ 5. Teste de Carga (`k6`) e Autoscaling Elástico (HPA)
+## 5. Teste de Carga (`k6`) e Autoscaling Elástico (HPA)
 
 O script [`tests/k6-load-test.js`](tests/k6-load-test.js) simula um cenário realista de produção com rampa de até **80 Usuários Virtuais (VUs) simultâneos** em proporção **80% leitura (Cache Hit no Redis)** e **20% escrita (Persistência no PostgreSQL + Redis)**.
 
@@ -118,7 +118,7 @@ O algoritmo do HPA ($\text{Réplicas} = \lceil \text{Réplicas Atuais} \times (\
 ```text
 NAME               REFERENCE                     TARGETS        MINPODS   MAXPODS   REPLICAS   FASE
 urlshortener-hpa   Deployment/urlshortener-api   cpu: 11%/70%   2         3         2          1. Repouso inicial
-urlshortener-hpa   Deployment/urlshortener-api   cpu: 82%/70%   2         3         2          2. Aquecimento (20 VUs) -> Gatilho >70%!
+urlshortener-hpa   Deployment/urlshortener-api   cpu: 82%/70%   2         3         2          2. Aquecimento (20 VUs) -> Gatilho >70%
 urlshortener-hpa   Deployment/urlshortener-api   cpu: 226%/70%  2         3         3          3. Scale-Out automático (2 -> 3 réplicas)
 urlshortener-hpa   Deployment/urlshortener-api   cpu: 328%/70%  2         3         3          4. Pico de estresse (80 VUs simultâneos)
 urlshortener-hpa   Deployment/urlshortener-api   cpu: 237%/70%  2         3         3          5. 3ª réplica assume tráfego no Service
@@ -129,18 +129,18 @@ urlshortener-hpa   Deployment/urlshortener-api   cpu: 7%/70%    2         3     
 
 | Métrica | Resultado Obtido | Threshold / SLA | Status |
 | :--- | :--- | :--- | :--- |
-| **Total de Requisições HTTP** | **7.564 requisições** (em 75s) | - | ✅ |
-| **Throughput (Vazão)** | **94,01 req/s** (em 2 vCPUs locais) | - | ✅ |
-| **Taxa de Sucesso (Checks)** | **99,98%** (7.562 / 7.563) | `> 99.0%` | ✅ |
-| **Taxa de Falha (`http_req_failed`)** | **0,01%** (1 / 7.564) | `rate < 0.01` (`< 1%`) | ✅ |
-| **Escritas no Postgres (`POST 201`)** | **100% de sucesso** (1.472 links criados) | `100%` | ✅ |
-| **Leituras no Redis (`GET 302`)** | **99,98% de sucesso** (6.090 / 6.091) | `> 99.0%` | ✅ |
-| **Latência Mínima (Redis Cache Hit)** | **0,71 ms** (`710.9 µs`) | `< 2 ms` | ✅ |
-| **Latência Mediana (`p50`)** | **113,35 ms** (sob 80 VUs concorrentes) | - | ✅ |
+| **Total de Requisições HTTP** | **7.564 requisições** (em 75s) | - | `PASS` |
+| **Throughput (Vazão)** | **94,01 req/s** (em 2 vCPUs locais) | - | `PASS` |
+| **Taxa de Sucesso (Checks)** | **99,98%** (7.562 / 7.563) | `> 99.0%` | `PASS` |
+| **Taxa de Falha (`http_req_failed`)** | **0,01%** (1 / 7.564) | `rate < 0.01` (`< 1%`) | `PASS` |
+| **Escritas no Postgres (`POST 201`)** | **100% de sucesso** (1.472 links criados) | `100%` | `PASS` |
+| **Leituras no Redis (`GET 302`)** | **99,98% de sucesso** (6.090 / 6.091) | `> 99.0%` | `PASS` |
+| **Latência Mínima (Redis Cache Hit)** | **0,71 ms** (`710.9 µs`) | `< 2 ms` | `PASS` |
+| **Latência Mediana (`p50`)** | **113,35 ms** (sob 80 VUs concorrentes) | - | `PASS` |
 
 ---
 
-## 🛠️ 6. Runbook Operacional (Como Executar Localmente)
+## 6. Runbook Operacional (Como Executar Localmente)
 
 ### Pré-requisitos
 - **Docker** & **k3d** (ou qualquer cluster Kubernetes)
@@ -182,7 +182,7 @@ k3d cluster start urlshortener-cluster
 
 ---
 
-## 📂 Estrutura do Repositório
+## 7. Estrutura do Repositório
 
 ```text
 ├── .github/workflows/
@@ -209,4 +209,3 @@ k3d cluster start urlshortener-cluster
 ├── Dockerfile                 # Multi-stage build com Layered JAR e usuário Non-Root
 └── docker-compose.yml         # Ambiente de desenvolvimento local rápido
 ```
-
