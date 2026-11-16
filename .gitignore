@@ -34,4 +34,5 @@ build/
 ### Logs & Environment ###
 *.log
 .env
+.agents/
 
